@@ -1,7 +1,7 @@
 import { columnDataType, columnRefToSQL } from './column'
 import { createDefinitionToSQL } from './create'
 import { identifierToSql, hasVal, toUpper, literalToSQL } from './util'
-import { exprToSQL } from './expr'
+import { exprToSQL, varToSQL } from './expr'
 import { tablesToSQL, tableToSQL } from './tables'
 import astToSQL from './sql'
 import { multipleToSQL } from './union'
@@ -10,6 +10,28 @@ function callToSQL(stmt) {
   const type = 'CALL'
   const storeProcessCall = exprToSQL(stmt.expr)
   return `${type} ${storeProcessCall}`
+}
+
+function doToSQL(stmt) {
+  const { type, language, code, declare, begin, expr, end, symbol } = stmt
+  const result = [toUpper(type)]
+  if (language) result.push('LANGUAGE', language)
+  // Handle parsed procedural code (with declare, begin, expr, end)
+  if (symbol) {
+    const declareSQL = declare ? `${multipleToSQL([declare])}${declare.symbol || ''}` : null
+    result.push(
+      symbol,
+      declareSQL,
+      toUpper(begin),
+      expr && multipleToSQL(expr),
+      toUpper(end),
+      symbol
+    )
+  } else if (code) {
+    // Fallback: handle raw code block
+    result.push(varToSQL(code))
+  }
+  return result.filter(hasVal).join(' ')
 }
 
 function commonCmdToSQL(stmt) {
@@ -227,6 +249,7 @@ export {
   deallocateToSQL,
   declareToSQL,
   descToSQL,
+  doToSQL,
   executeToSQL,
   forLoopToSQL,
   grantAndRevokeToSQL,

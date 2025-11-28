@@ -1943,6 +1943,33 @@ describe('Postgres', () => {
         'ALTER TABLE "configuration" ADD CONSTRAINT "configuration_pk" PRIMARY KEY ("something", "something_else", "something_something_else")',
       ]
     },
+    {
+      title: 'do statement with double dollar',
+      sql: [
+        `DO $$
+        DECLARE
+            test INTEGER;
+        BEGIN
+            SELECT 1 INTO test;
+        END
+        $$;`,
+        `DO $$ DECLARE test INTEGER; BEGIN SELECT 1 INTO "test" END $$`
+      ]
+    },
+    {
+      title: 'do statement with language',
+      sql: [
+        "DO LANGUAGE plpgsql $$ BEGIN RAISE NOTICE 'Hello'; END $$;",
+        "DO LANGUAGE plpgsql $$ BEGIN RAISE NOTICE 'Hello' END $$"
+      ]
+    },
+    {
+      title: 'do statement with tagged dollar quote',
+      sql: [
+        "DO $tag$BEGIN SELECT 1; END$tag$;",
+        "DO $tag$BEGIN SELECT 1; END$tag$"
+      ]
+    },
   ]
   function neatlyNestTestedSQL(sqlList){
     sqlList.forEach(sqlInfo => {

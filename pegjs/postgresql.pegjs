@@ -242,6 +242,7 @@ cmd_stmt
   / for_loop_stmt
   / transaction_stmt
   / comment_on_stmt
+  / do_stmt
 
 create_stmt
   = create_table_stmt
@@ -3096,6 +3097,52 @@ execute_stmt
       }
     }
   }
+
+do_stmt
+  = 'DO'i __ lang:('LANGUAGE'i __ ident_name __)? __ c:[^ \s\t\n\r]+ __ de:declare_stmt? __ b:('BEGIN'i)? __ s:multiple_stmt __ e:KW_END? &{ return (b && e) || (!b && !e) } __ SEMICOLON? __ l:[^ \s\t\n\r;]+ {
+    /* export interface do_stmt_t {
+        type: 'do';
+        language?: string;
+        declare?: declare_stmt;
+        begin?: string;
+        expr: multiple_stmt;
+        end?: string;
+        symbol: string;
+      }
+      => AstStatement<do_stmt_t>
+     */
+    const start = c.join('')
+    const end = l.join('')
+    if (start !== end) throw new Error(`start symbol '${start}' is not same with end symbol '${end}'`)
+    return {
+      tableList: Array.from(tableList),
+      columnList: columnListTableAlias(columnList),
+      ast: {
+        type: 'do',
+        language: lang && lang[2],
+        declare: de && de.ast,
+        begin: b,
+        expr: Array.isArray(s.ast) ? s.ast.flat() : [s.ast],
+        end: e && e[0],
+        symbol: start,
+      }
+    }
+  }
+  / 'DO'i __ lang:('LANGUAGE'i __ ident_name __)? __ code:var_decl {
+    /* Fallback for simple DO statements with unparseable code blocks
+      => AstStatement<do_stmt_t>
+     */
+    return {
+      tableList: Array.from(tableList),
+      columnList: columnListTableAlias(columnList),
+      ast: {
+        type: 'do',
+        language: lang && lang[2],
+        code: code
+      }
+    }
+  }
+
 for_label
   = 'FOR'i {
     // => { label?: string; keyword: 'for'; }
